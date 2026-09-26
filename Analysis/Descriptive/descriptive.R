@@ -1,4 +1,3 @@
-install.packages(c("tidyverse","readxl","skimr","DataExplorer","car","lmtest","MASS","glmnet","caret","agricolae","forecast","BAS"))
 library(tidyverse)
 library(readxl)
 

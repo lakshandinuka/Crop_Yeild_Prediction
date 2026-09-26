@@ -1,5 +1,3 @@
-install.packages("missMDA")
-
 wide <- df %>% select(District, Year, Season, Seasonal_Rainfall_mm) %>%
   unite(period, Year, Season) %>% pivot_wider(names_from=period, values_from=Seasonal_Rainfall_mm)
 
