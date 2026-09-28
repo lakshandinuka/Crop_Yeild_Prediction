@@ -526,7 +526,7 @@ if len(usable_for_importance) > 5:
         st.warning(f"Importance calculation skipped: {exc}")
 
 # Historical benchmark
-st.subheader("📊 Selected district-season history")
+st.subheader("Selected district-season history")
 hist = df[(df["District"] == district) & (df["Season"] == season)].dropna(subset=[TARGET]).sort_values("Year")
 if len(hist):
     hist_fig = go.Figure()
@@ -539,7 +539,7 @@ else:
     st.warning("No historical observations are available for this district-season combination.")
 
 # Validation errors
-st.subheader("📐 Holdout validation")
+st.subheader("Holdout validation")
 val_fig = px.scatter(
     validation,
     x=TARGET,
