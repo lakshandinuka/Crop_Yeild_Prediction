@@ -35,7 +35,7 @@ REQUIRED = {
     "Seasonal_Rainfall_mm",
     TARGET,
 }
-DEFAULT_DATA = Path(__file__).parent / "data" / "rainfall_agricultural_productivity_M_Tonnes.xlsx"
+DEFAULT_DATA = Path(__file__).parent / "data" / "/Users/dinuka/SLIIT/Y3S1/SM/Project/Crop_Yeild_Prediction/Dataset/rainfall_agricultural_productivity.xlsx"
 
 
 # ------------------------------------------------------------
