@@ -43,10 +43,10 @@ DEFAULT_DATA = Path("/Users/dinuka/SLIIT/Y3S1/SM/Project/Crop_Yeild_Prediction/D
 # ------------------------------------------------------------
 def load_data(source):
     if isinstance(source, (str, Path)):
-        df = pd.read_excel(source)
+        df = pd.read_excel(source, engine="openpyxl")
     else:
         data = source.read()
-        df = pd.read_excel(io.BytesIO(data))
+        df = pd.read_excel(io.BytesIO(data), engine="openpyxl")
 
     missing = REQUIRED - set(df.columns)
     if missing:
@@ -306,7 +306,7 @@ def prediction_table_output(row):
 st.markdown(
     """
     <div style='padding: 0.6rem 0 0.2rem 0;'>
-      <h1 style='margin-bottom:0;'>🌾 PaddyRisk-SL</h1>
+      <h1 style='margin-bottom:0;'>🌾 Paddy Risk Sri Lanka</h1>
       <p style='font-size:1.08rem; opacity:0.78; margin-top:0.2rem;'>Rainfall-Based Paddy Production Early Warning & Decision Support</p>
     </div>
     """,
@@ -456,7 +456,7 @@ with right:
         st.write(f"**{label}:** {value}\n\n_{note}_")
 
 # Explainability
-st.subheader("🧠 What is driving the model?")
+st.subheader("What is driving the model?")
 usable_for_importance = test.copy()
 if len(usable_for_importance) > 5:
     # Feature importance is computed on raw, human-readable variables.
@@ -464,23 +464,65 @@ if len(usable_for_importance) > 5:
         return predict_ensemble(bundle, frame)[0]
 
     try:
+        # permutation_importance requires a scikit-learn-compatible estimator
+        # that implements both fit() and predict(). The previous dynamic
+        # ScenarioEstimator only implemented predict(), which caused:
+        # "The 'estimator' parameter ... must be an object implementing 'fit'."
+        from sklearn.base import BaseEstimator, RegressorMixin
+
+        class ScenarioEstimator(BaseEstimator, RegressorMixin):
+            def __init__(self, model_bundle):
+                self.model_bundle = model_bundle
+
+            def fit(self, X, y=None):
+                # The underlying ensemble is already trained. This fit()
+                # method exists to satisfy the sklearn estimator interface.
+                self.is_fitted_ = True
+                return self
+
+            def predict(self, X):
+                predictions, _, _ = predict_ensemble(self.model_bundle, X)
+                return predictions
+
+        importance_features = [
+            "Year",
+            "Season",
+            "District",
+            "Seasonal_Rainfall_mm",
+        ]
+
+        X_importance = usable_for_importance[importance_features].copy()
+        y_importance = usable_for_importance[TARGET].astype(float).copy()
+
+        scenario_estimator = ScenarioEstimator(bundle)
+        scenario_estimator.fit(X_importance, y_importance)
+
         perm = permutation_importance(
-            estimator=type("ScenarioEstimator", (), {"predict": raw_predict})(),
-            X=usable_for_importance[["Year", "Season", "District", "Seasonal_Rainfall_mm"]],
-            y=usable_for_importance[TARGET],
+            estimator=scenario_estimator,
+            X=X_importance,
+            y=y_importance,
             n_repeats=5,
             random_state=42,
             scoring="neg_mean_absolute_error",
         )
+
         imp = pd.DataFrame(
             {
-                "Feature": ["Year", "Season", "District", "Seasonal_Rainfall_mm"],
+                "Feature": importance_features,
                 "Importance": perm.importances_mean,
             }
         ).sort_values("Importance", ascending=False)
-        fig3 = px.bar(imp, x="Importance", y="Feature", orientation="h", title="Permutation importance (MAE impact)")
+
+        fig3 = px.bar(
+            imp,
+            x="Importance",
+            y="Feature",
+            orientation="h",
+            title="Permutation importance (MAE impact)",
+        )
         fig3.update_layout(height=300, margin=dict(l=10, r=10, t=45, b=10))
         st.plotly_chart(fig3, use_container_width=True)
+
     except Exception as exc:
         st.warning(f"Importance calculation skipped: {exc}")
 
